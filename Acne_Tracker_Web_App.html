@@ -1,0 +1,736 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/1gm1y5sHKF3ZpdYdEpY8QfpI4xWKwYy5/7cc65094-6909-41ce-90a3-5331da4920c8/files/">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Acne Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --border: #2e2e3e;
+    --accent: #a78bfa;
+    --accent2: #f472b6;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1a1a24 0%, #16101f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header span { font-size: 0.82rem; color: var(--muted); }
+
+  nav { display: flex; gap: 6px; padding: 16px 28px 0; border-bottom: 1px solid var(--border); }
+  nav button {
+    background: none; border: none; padding: 10px 20px; border-radius: var(--radius) var(--radius) 0 0;
+    color: var(--muted); cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all .2s;
+  }
+  nav button.active { background: var(--surface); color: var(--accent); border: 1px solid var(--border); border-bottom: 1px solid var(--surface); }
+  nav button:hover:not(.active) { color: var(--text); }
+
+  .page { display: none; padding: 24px 28px; }
+  .page.active { display: block; }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 640px; margin: 0 auto; }
+  .form-card h2 { font-size: 1.1rem; margin-bottom: 20px; }
+  .form-row { margin-bottom: 18px; }
+  label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+  input[type=date], input[type=number], textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 14px; color: var(--text); font-size: 0.95rem; outline: none; transition: border .2s;
+  }
+  input[type=date]:focus, input[type=number]:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .severity-row { display: flex; gap: 8px; }
+  .sev-btn {
+    flex: 1; padding: 10px 4px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 0.85rem;
+    font-weight: 600; transition: all .15s; text-align: center;
+  }
+  .sev-btn:hover { border-color: var(--accent); }
+  .sev-btn.selected { color: #fff; border-color: transparent; }
+  .sev-btn[data-v="1"].selected { background: var(--green); }
+  .sev-btn[data-v="2"].selected { background: #6ee7b7; color: #064e3b; }
+  .sev-btn[data-v="3"].selected { background: var(--yellow); color: #1c1401; }
+  .sev-btn[data-v="4"].selected { background: var(--orange); color: #1c0a01; }
+  .sev-btn[data-v="5"].selected { background: var(--red); }
+
+  .areas-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .area-btn {
+    padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 0.78rem;
+    font-weight: 500; text-align: center; transition: all .15s;
+  }
+  .area-btn.selected { background: #3b2d6e; border-color: var(--accent); color: var(--accent); }
+
+  /* ── PHOTO SECTION ── */
+  .photo-section { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .photo-actions { display: flex; gap: 0; }
+  .photo-tab {
+    flex: 1; padding: 11px; background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--muted); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all .2s;
+  }
+  .photo-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Camera panel */
+  .camera-panel { padding: 14px; display: none; }
+  .camera-panel.show { display: block; }
+  #cam-preview {
+    width: 100%; border-radius: 10px; background: #000; max-height: 260px;
+    object-fit: cover; display: block;
+  }
+  .cam-controls { display: flex; gap: 10px; margin-top: 10px; }
+  .cam-btn {
+    flex: 1; padding: 10px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor: pointer; font-size: 0.85rem;
+    font-weight: 600; transition: all .15s;
+  }
+  .cam-btn.capture { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent; color: #fff; }
+  .cam-btn:hover { opacity: .85; }
+  #cam-canvas { display: none; }
+
+  /* Upload panel */
+  .upload-panel { padding: 14px; display: none; }
+  .upload-panel.show { display: block; }
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 30px 16px; text-align: center;
+    cursor: pointer; transition: border .2s; position: relative;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-zone p { color: var(--muted); font-size: 0.85rem; pointer-events: none; }
+  .drop-zone .dz-icon { font-size: 2rem; margin-bottom: 8px; }
+
+  /* Preview */
+  .photo-preview-wrap { padding: 14px; display: none; }
+  .photo-preview-wrap.show { display: flex; gap: 10px; align-items: flex-start; }
+  #photo-thumb { width: 90px; height: 90px; border-radius: 10px; object-fit: cover; border: 2px solid var(--accent); cursor: pointer; }
+  .photo-preview-meta { flex: 1; }
+  .photo-preview-meta p { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+  .remove-photo {
+    background: none; border: 1px solid var(--border); border-radius: 7px; padding: 5px 12px;
+    color: var(--red); cursor: pointer; font-size: 0.78rem; transition: all .15s;
+  }
+  .remove-photo:hover { background: #f8717122; }
+
+  .btn-primary {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity .2s; margin-top: 6px;
+  }
+  .btn-primary:hover { opacity: .88; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--green); color: #052e16; padding: 12px 28px; border-radius: 30px;
+    font-weight: 600; font-size: 0.9rem; transition: transform .3s ease; z-index: 999; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── HISTORY ── */
+  .history-controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .history-controls input[type=month] {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 14px; color: var(--text); font-size: 0.9rem; outline: none;
+  }
+  .entries-list { display: flex; flex-direction: column; gap: 10px; }
+  .entry-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; display: flex; align-items: flex-start; gap: 14px;
+  }
+  .entry-sev {
+    width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.2rem; font-weight: 800; flex-shrink: 0;
+  }
+  .entry-meta { flex: 1; min-width: 0; }
+  .entry-date { font-size: 0.82rem; color: var(--muted); margin-bottom: 3px; }
+  .entry-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+  .entry-areas { font-size: 0.78rem; color: var(--muted); }
+  .entry-notes { font-size: 0.82rem; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .entry-thumb {
+    width: 64px; height: 64px; border-radius: 9px; object-fit: cover; cursor: pointer;
+    border: 1px solid var(--border); flex-shrink: 0; transition: transform .15s;
+  }
+  .entry-thumb:hover { transform: scale(1.05); border-color: var(--accent); }
+  .del-btn {
+    background: none; border: 1px solid var(--border); border-radius: 7px; padding: 5px 10px;
+    color: var(--muted); cursor: pointer; font-size: 0.78rem; flex-shrink: 0; transition: all .15s;
+  }
+  .del-btn:hover { border-color: var(--red); color: var(--red); }
+  .empty { text-align: center; color: var(--muted); padding: 48px 0; font-size: 0.95rem; }
+
+  /* ── LIGHTBOX ── */
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 2000;
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 94vw; max-height: 80vh; border-radius: 14px; object-fit: contain; }
+  .lightbox-date { color: var(--muted); font-size: 0.85rem; }
+  .lightbox-close {
+    position: absolute; top: 20px; right: 24px; background: none; border: 1px solid var(--border);
+    border-radius: 50%; width: 36px; height: 36px; color: var(--text); font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-close:hover { background: var(--surface2); }
+
+  /* ── TRENDS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; text-align: center; }
+  .stat-val { font-size: 1.9rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .chart-card h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 220px; }
+  .areas-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .area-row { display: flex; align-items: center; gap: 12px; }
+  .area-name { width: 90px; font-size: 0.82rem; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .area-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 10px; overflow: hidden; }
+  .area-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .6s ease; }
+  .area-count { font-size: 0.78rem; color: var(--muted); width: 28px; flex-shrink: 0; }
+
+  /* Photo timeline in trends */
+  .photo-strip { display: flex; gap: 10px; overflow-x: auto; padding: 8px 0 4px; }
+  .photo-strip::-webkit-scrollbar { height: 4px; }
+  .photo-strip::-webkit-scrollbar-track { background: var(--surface2); border-radius: 2px; }
+  .photo-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .strip-item { flex-shrink: 0; text-align: center; cursor: pointer; }
+  .strip-item img { width: 70px; height: 70px; border-radius: 9px; object-fit: cover; border: 2px solid transparent; transition: border .15s; }
+  .strip-item img:hover { border-color: var(--accent); }
+  .strip-item span { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
+
+  .insight-card { background: linear-gradient(135deg, #1e1340 0%, #1a1030 100%); border: 1px solid #3b2d6e; border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+  .insight-card h3 { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .insight-card p { font-size: 0.92rem; color: var(--text); line-height: 1.65; }
+
+  @media (max-width: 600px) {
+    header { padding: 14px 16px; }
+    nav { padding: 12px 16px 0; }
+    .page { padding: 16px; }
+    .form-card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌿 Acne Tracker</h1>
+  <span id="header-date"></span>
+</header>
+
+<nav>
+  <button class="active" onclick="showPage('log',this)">📝 Log</button>
+  <button onclick="showPage('history',this)">📋 History</button>
+  <button onclick="showPage('trends',this)">📊 Trends</button>
+</nav>
+
+<!-- LOG PAGE -->
+<div id="page-log" class="page active">
+  <div class="form-card">
+    <h2>Log Today's Skin</h2>
+
+    <div class="form-row">
+      <label>Date</label>
+      <input type="date" id="f-date"/>
+    </div>
+
+    <div class="form-row">
+      <label>Severity</label>
+      <div class="severity-row">
+        <button class="sev-btn" data-v="1" onclick="setSev(1)">1<br><small>Clear</small></button>
+        <button class="sev-btn" data-v="2" onclick="setSev(2)">2<br><small>Almost</small></button>
+        <button class="sev-btn" data-v="3" onclick="setSev(3)">3<br><small>Mild</small></button>
+        <button class="sev-btn" data-v="4" onclick="setSev(4)">4<br><small>Moderate</small></button>
+        <button class="sev-btn" data-v="5" onclick="setSev(5)">5<br><small>Severe</small></button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Affected Areas <small style="text-transform:none;letter-spacing:0">(tap to select)</small></label>
+      <div class="areas-grid">
+        <button class="area-btn" data-a="forehead" onclick="toggleArea('forehead')">Forehead</button>
+        <button class="area-btn" data-a="nose" onclick="toggleArea('nose')">Nose</button>
+        <button class="area-btn" data-a="left_cheek" onclick="toggleArea('left_cheek')">L. Cheek</button>
+        <button class="area-btn" data-a="right_cheek" onclick="toggleArea('right_cheek')">R. Cheek</button>
+        <button class="area-btn" data-a="chin" onclick="toggleArea('chin')">Chin</button>
+        <button class="area-btn" data-a="jawline" onclick="toggleArea('jawline')">Jawline</button>
+        <button class="area-btn" data-a="back" onclick="toggleArea('back')">Back</button>
+        <button class="area-btn" data-a="chest" onclick="toggleArea('chest')">Chest</button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>New Pimples Today</label>
+      <input type="number" id="f-count" min="0" placeholder="e.g. 3"/>
+    </div>
+
+    <!-- PHOTO -->
+    <div class="form-row">
+      <label>Photo <small style="text-transform:none;letter-spacing:0">(optional)</small></label>
+      <div class="photo-section">
+        <div class="photo-actions">
+          <button class="photo-tab active" id="tab-camera" onclick="switchPhotoTab('camera')">📷 Camera</button>
+          <button class="photo-tab" id="tab-upload" onclick="switchPhotoTab('upload')">🖼️ Upload</button>
+        </div>
+
+        <!-- Camera -->
+        <div class="camera-panel show" id="cam-panel">
+          <video id="cam-preview" autoplay playsinline muted></video>
+          <canvas id="cam-canvas"></canvas>
+          <div class="cam-controls">
+            <button class="cam-btn" id="btn-start-cam" onclick="startCamera()">▶ Start Camera</button>
+            <button class="cam-btn capture" id="btn-capture" onclick="capturePhoto()" style="display:none">📸 Capture</button>
+            <button class="cam-btn" id="btn-flip" onclick="flipCamera()" style="display:none">🔄 Flip</button>
+            <button class="cam-btn" id="btn-stop-cam" onclick="stopCamera()" style="display:none">✕ Stop</button>
+          </div>
+        </div>
+
+        <!-- Upload -->
+        <div class="upload-panel" id="upload-panel">
+          <div class="drop-zone" id="drop-zone"
+               ondragover="event.preventDefault();this.classList.add('dragover')"
+               ondragleave="this.classList.remove('dragover')"
+               ondrop="handleDrop(event)">
+            <div class="dz-icon">📂</div>
+            <p>Tap to choose a photo, or drag & drop here</p>
+            <input type="file" accept="image/*" onchange="handleFileInput(event)"/>
+          </div>
+        </div>
+
+        <!-- Preview (shared) -->
+        <div class="photo-preview-wrap" id="photo-preview-wrap">
+          <img id="photo-thumb" src="" alt="preview" onclick="openLightbox(currentPhoto, 'Preview')"/>
+          <div class="photo-preview-meta">
+            <p>Photo ready ✅</p>
+            <button class="remove-photo" onclick="removePhoto()">✕ Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Notes <small style="text-transform:none;letter-spacing:0">(diet, stress, sleep, products…)</small></label>
+      <textarea id="f-notes" placeholder="e.g. Ate a lot of sugar, poor sleep, started new moisturiser…"></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="saveEntry()">💾 Save Entry</button>
+  </div>
+</div>
+
+<!-- HISTORY PAGE -->
+<div id="page-history" class="page">
+  <div class="history-controls">
+    <label style="color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em">Filter by month:</label>
+    <input type="month" id="h-month" oninput="renderHistory()"/>
+    <button onclick="document.getElementById('h-month').value='';renderHistory()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--muted);cursor:pointer;font-size:.82rem;">Clear</button>
+  </div>
+  <div class="entries-list" id="entries-list"></div>
+</div>
+
+<!-- TRENDS PAGE -->
+<div id="page-trends" class="page">
+  <div class="stats-row" id="stats-row"></div>
+  <div class="chart-card">
+    <h3>📈 Daily Severity — Last 60 Days</h3>
+    <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>📅 Monthly Average Severity</h3>
+    <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+  </div>
+  <div class="chart-card" id="photo-timeline-card" style="display:none">
+    <h3>📸 Photo Timeline</h3>
+    <div class="photo-strip" id="photo-strip"></div>
+  </div>
+  <div class="chart-card">
+    <h3>📍 Most Affected Areas</h3>
+    <div class="areas-bars" id="areas-bars"></div>
+  </div>
+  <div class="insight-card" id="insight-card"></div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxOutside(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lb-img" src="" alt=""/>
+  <span class="lightbox-date" id="lb-date"></span>
+</div>
+
+<div class="toast" id="toast">✅ Entry saved!</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const STORE = 'acne_entries_v2';
+let entries = JSON.parse(localStorage.getItem(STORE) || '[]');
+let selSev = 0;
+let selAreas = new Set();
+let currentPhoto = null; // base64 string
+let camStream = null;
+let camFacingMode = 'user'; // front camera by default
+let charts = {};
+
+// ── Init ───────────────────────────────────────────────────
+(function init() {
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('f-date').value = today;
+  document.getElementById('h-month').value = today.slice(0,7);
+})();
+
+// ── Nav ────────────────────────────────────────────────────
+function showPage(p, btn) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  btn.classList.add('active');
+  stopCamera();
+  if (p === 'history') renderHistory();
+  if (p === 'trends') renderTrends();
+}
+
+// ── Severity ───────────────────────────────────────────────
+function setSev(v) {
+  selSev = v;
+  document.querySelectorAll('.sev-btn').forEach(b => b.classList.toggle('selected', +b.dataset.v === v));
+}
+
+// ── Areas ──────────────────────────────────────────────────
+function toggleArea(a) {
+  if (selAreas.has(a)) selAreas.delete(a);
+  else selAreas.add(a);
+  document.querySelector(`.area-btn[data-a="${a}"]`).classList.toggle('selected', selAreas.has(a));
+}
+
+// ── Photo Tabs ─────────────────────────────────────────────
+function switchPhotoTab(tab) {
+  document.getElementById('tab-camera').classList.toggle('active', tab==='camera');
+  document.getElementById('tab-upload').classList.toggle('active', tab==='upload');
+  document.getElementById('cam-panel').classList.toggle('show', tab==='camera');
+  document.getElementById('upload-panel').classList.toggle('show', tab==='upload');
+  if (tab !== 'camera') stopCamera();
+}
+
+// ── Camera ─────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    if (camStream) stopCamera();
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacingMode }, audio: false });
+    const vid = document.getElementById('cam-preview');
+    vid.srcObject = camStream;
+    document.getElementById('btn-start-cam').style.display = 'none';
+    document.getElementById('btn-capture').style.display = '';
+    document.getElementById('btn-flip').style.display = '';
+    document.getElementById('btn-stop-cam').style.display = '';
+  } catch(e) {
+    alert('Camera access denied or not available. Please use the Upload tab instead.');
+  }
+}
+
+function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+  const vid = document.getElementById('cam-preview');
+  if (vid) vid.srcObject = null;
+  const bs = document.getElementById('btn-start-cam');
+  const bc = document.getElementById('btn-capture');
+  const bf = document.getElementById('btn-flip');
+  const bst = document.getElementById('btn-stop-cam');
+  if (bs) bs.style.display = '';
+  if (bc) bc.style.display = 'none';
+  if (bf) bf.style.display = 'none';
+  if (bst) bst.style.display = 'none';
+}
+
+async function flipCamera() {
+  camFacingMode = camFacingMode === 'user' ? 'environment' : 'user';
+  await startCamera();
+}
+
+function capturePhoto() {
+  const vid = document.getElementById('cam-preview');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = vid.videoWidth || 640;
+  canvas.height = vid.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  // Mirror front camera
+  if (camFacingMode === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(vid, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+  setPhoto(dataUrl);
+  stopCamera();
+}
+
+// ── Upload ─────────────────────────────────────────────────
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) readImageFile(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) readImageFile(file);
+}
+
+function readImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => setPhoto(ev.target.result);
+  reader.readAsDataURL(file);
+}
+
+// ── Photo state ────────────────────────────────────────────
+function setPhoto(dataUrl) {
+  currentPhoto = dataUrl;
+  document.getElementById('photo-thumb').src = dataUrl;
+  document.getElementById('photo-preview-wrap').classList.add('show');
+}
+
+function removePhoto() {
+  currentPhoto = null;
+  document.getElementById('photo-preview-wrap').classList.remove('show');
+  document.getElementById('photo-thumb').src = '';
+}
+
+// ── Lightbox ───────────────────────────────────────────────
+function openLightbox(src, dateStr) {
+  if (!src) return;
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lb-date').textContent = dateStr || '';
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('show'); }
+function closeLightboxOutside(e) { if (e.target === document.getElementById('lightbox')) closeLightbox(); }
+
+// ── Save ───────────────────────────────────────────────────
+function saveEntry() {
+  const date = document.getElementById('f-date').value;
+  if (!date) return alert('Please pick a date.');
+  if (!selSev) return alert('Please select a severity level.');
+  const entry = {
+    id: Date.now(),
+    date,
+    severity: selSev,
+    areas: [...selAreas],
+    pimples: parseInt(document.getElementById('f-count').value) || 0,
+    notes: document.getElementById('f-notes').value.trim(),
+    photo: currentPhoto
+  };
+  entries = entries.filter(e => e.date !== date);
+  entries.push(entry);
+  entries.sort((a,b) => b.date.localeCompare(a.date));
+  localStorage.setItem(STORE, JSON.stringify(entries));
+  showToast();
+  resetForm();
+}
+
+function resetForm() {
+  selSev = 0; selAreas = new Set(); currentPhoto = null;
+  document.querySelectorAll('.sev-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.area-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('f-count').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('photo-preview-wrap').classList.remove('show');
+  document.getElementById('photo-thumb').src = '';
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── History ────────────────────────────────────────────────
+function renderHistory() {
+  const filter = document.getElementById('h-month').value;
+  let list = filter ? entries.filter(e => e.date.startsWith(filter)) : entries;
+  const el = document.getElementById('entries-list');
+  if (!list.length) { el.innerHTML = '<div class="empty">No entries found.</div>'; return; }
+  const colors = ['','#34d399','#6ee7b7','#fbbf24','#fb923c','#f87171'];
+  const labels = ['','Clear','Almost','Mild','Moderate','Severe'];
+  el.innerHTML = list.map(e => {
+    const sev = e.severity;
+    const areaNames = (e.areas||[]).map(a => a.replace('_',' ')).join(', ');
+    const thumbHtml = e.photo
+      ? `<img class="entry-thumb" src="${e.photo}" alt="photo" onclick="openLightbox('${e.photo}','${formatDate(e.date)}')" />`
+      : '';
+    return `<div class="entry-card">
+      <div class="entry-sev" style="background:${colors[sev]}22;color:${colors[sev]}">${sev}</div>
+      <div class="entry-meta">
+        <div class="entry-date">${formatDate(e.date)}</div>
+        <div class="entry-title">${labels[sev]} severity${e.pimples ? ` · ${e.pimples} new pimple${e.pimples!==1?'s':''}` : ''}</div>
+        ${areaNames ? `<div class="entry-areas">📍 ${areaNames}</div>` : ''}
+        ${e.notes ? `<div class="entry-notes">"${e.notes}"</div>` : ''}
+      </div>
+      ${thumbHtml}
+      <button class="del-btn" onclick="deleteEntry(${e.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  entries = entries.filter(e => e.id !== id);
+  localStorage.setItem(STORE, JSON.stringify(entries));
+  renderHistory();
+}
+
+function formatDate(d) {
+  return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// ── Trends ─────────────────────────────────────────────────
+function renderTrends() {
+  if (!entries.length) {
+    document.getElementById('stats-row').innerHTML = '<div class="empty" style="grid-column:1/-1">No entries yet. Start logging!</div>';
+    document.getElementById('insight-card').innerHTML = '';
+    return;
+  }
+  const allSev = entries.map(e => e.severity);
+  const avgSev = (allSev.reduce((a,b)=>a+b,0)/allSev.length).toFixed(1);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const thisMonthEntries = entries.filter(e => e.date.startsWith(thisMonth));
+  const avgThisMonth = thisMonthEntries.length ? (thisMonthEntries.map(e=>e.severity).reduce((a,b)=>a+b,0)/thisMonthEntries.length).toFixed(1) : '—';
+  const streak = calcStreak();
+  const totalPimples = entries.reduce((s,e)=>s+(e.pimples||0),0);
+  const photoCount = entries.filter(e=>e.photo).length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${entries.length}</div><div class="stat-label">Total Entries</div></div>
+    <div class="stat-card"><div class="stat-val">${avgSev}</div><div class="stat-label">Avg Severity</div></div>
+    <div class="stat-card"><div class="stat-val">${avgThisMonth}</div><div class="stat-label">This Month</div></div>
+    <div class="stat-card"><div class="stat-val">${streak}</div><div class="stat-label">Day Streak 🔥</div></div>
+    <div class="stat-card"><div class="stat-val">${totalPimples}</div><div class="stat-label">Total Pimples</div></div>
+    <div class="stat-card"><div class="stat-val">${photoCount}</div><div class="stat-label">Photos Taken</div></div>
+  `;
+
+  // Daily chart
+  const now = new Date();
+  const days = [];
+  for (let i=59; i>=0; i--) { const d=new Date(now); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const dailyData = days.map(d => { const e=entries.find(x=>x.date===d); return e?e.severity:null; });
+  renderLineChart('chart-daily', days.map(d=>d.slice(5)), dailyData);
+
+  // Monthly chart
+  const monthly = {};
+  entries.forEach(e => { const m=e.date.slice(0,7); if(!monthly[m])monthly[m]=[]; monthly[m].push(e.severity); });
+  const months = Object.keys(monthly).sort().slice(-6);
+  const monthLabels = months.map(m => { const [y,mo]=m.split('-'); return new Date(+y,+mo-1).toLocaleString('en',{month:'short',year:'2-digit'}); });
+  const monthVals = months.map(m => +(monthly[m].reduce((a,b)=>a+b,0)/monthly[m].length).toFixed(2));
+  renderBarChart('chart-monthly', monthLabels, monthVals);
+
+  // Photo timeline
+  const photosEntries = [...entries].filter(e=>e.photo).sort((a,b)=>a.date.localeCompare(b.date));
+  const ptCard = document.getElementById('photo-timeline-card');
+  if (photosEntries.length) {
+    ptCard.style.display = '';
+    document.getElementById('photo-strip').innerHTML = photosEntries.map(e =>
+      `<div class="strip-item" onclick="openLightbox('${e.photo}','${formatDate(e.date)}')">
+        <img src="${e.photo}" alt="${e.date}"/>
+        <span>${e.date.slice(5)}</span>
+      </div>`
+    ).join('');
+  } else {
+    ptCard.style.display = 'none';
+  }
+
+  // Areas
+  const areaCounts = {};
+  entries.forEach(e => (e.areas||[]).forEach(a => { areaCounts[a]=(areaCounts[a]||0)+1; }));
+  const areasSorted = Object.entries(areaCounts).sort((a,b)=>b[1]-a[1]);
+  const maxCount = areasSorted[0]?.[1]||1;
+  const areaNames = { forehead:'Forehead', nose:'Nose', left_cheek:'L. Cheek', right_cheek:'R. Cheek', chin:'Chin', jawline:'Jawline', back:'Back', chest:'Chest' };
+  document.getElementById('areas-bars').innerHTML = areasSorted.length ?
+    areasSorted.map(([k,v]) => `<div class="area-row">
+      <div class="area-name">${areaNames[k]||k}</div>
+      <div class="area-bar-wrap"><div class="area-bar-fill" style="width:${(v/maxCount*100).toFixed(1)}%"></div></div>
+      <div class="area-count">${v}</div>
+    </div>`).join('') :
+    '<div style="color:var(--muted);font-size:.85rem">No area data yet.</div>';
+
+  renderInsight(avgSev, months, monthVals, areasSorted, entries);
+}
+
+function calcStreak() {
+  const dateSet = new Set(entries.map(e=>e.date));
+  let streak=0; const d=new Date();
+  while(true) { const ds=d.toISOString().slice(0,10); if(!dateSet.has(ds)) break; streak++; d.setDate(d.getDate()-1); }
+  return streak;
+}
+
+function renderLineChart(id, labels, data) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ data, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.15)',
+      pointBackgroundColor:data.map(v=>v===null?'transparent':sevColor(v)),
+      pointRadius:data.map(v=>v===null?0:4), borderWidth:2, fill:true, tension:.35, spanGaps:false }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>`Severity: ${c.parsed.y}`}} },
+      scales:{ x:{ticks:{color:'#64748b',maxTicksLimit:10},grid:{color:'#1e2030'}},
+               y:{min:0,max:6,ticks:{color:'#64748b',stepSize:1},grid:{color:'#1e2030'}} } }
+  });
+}
+
+function renderBarChart(id, labels, data) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data,
+      backgroundColor:data.map(v=>sevColor(Math.round(v))+'bb'),
+      borderColor:data.map(v=>sevColor(Math.round(v))),
+      borderWidth:1, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Avg Severity: ${c.parsed.y}`}}},
+      scales:{ x:{ticks:{color:'#64748b'},grid:{display:false}},
+               y:{min:0,max:5,ticks:{color:'#64748b',stepSize:1},grid:{color:'#1e2030'}} } }
+  });
+}
+
+function sevColor(v) {
+  return ['#34d399','#34d399','#6ee7b7','#fbbf24','#fb923c','#f87171'][Math.min(v,5)];
+}
+
+function renderInsight(avgSev, months, monthVals, areas, entries) {
+  let trend = '';
+  if (monthVals.length >= 2) {
+    const diff = monthVals[monthVals.length-1] - monthVals[monthVals.length-2];
+    if (diff < -0.3) trend = '📉 Your skin is improving — severity is trending down this month. Keep up whatever you\'re doing!';
+    else if (diff > 0.3) trend = '📈 Severity has increased compared to last month. Consider reviewing recent diet, stress, or product changes.';
+    else trend = '➡️ Your skin has been relatively stable month-over-month.';
+  } else {
+    trend = '📊 Log more entries across multiple months to see trend direction.';
+  }
+  const topArea = areas[0] ? `Your most affected area is <strong>${areas[0][0].replace('_',' ')}</strong> (${areas[0][1]} times).` : '';
+  const keywords = entries.flatMap(e=>e.notes.toLowerCase().split(/\s+/));
+  const triggers = [];
+  if (keywords.filter(w=>['sugar','chocolate','dairy','junk','fast','greasy'].includes(w)).length>1) triggers.push('diet (sugar/dairy)');
+  if (keywords.filter(w=>['stress','stressed','anxious','anxiety'].includes(w)).length>1) triggers.push('stress');
+  if (keywords.filter(w=>['sleep','tired','insomnia'].includes(w)).length>1) triggers.push('sleep quality');
+  const triggerText = triggers.length
+    ? `Recurring mentions of <strong>${triggers.join(', ')}</strong> in your notes may be contributing triggers.`
+    : 'No strong trigger patterns detected in your notes yet — keep logging for better insights.';
+  document.getElementById('insight-card').innerHTML = `<h3>🤖 AI Skin Insight</h3><p>${trend} ${topArea} ${triggerText}</p>`;
+}
+</script>
+</body>
+</html>
